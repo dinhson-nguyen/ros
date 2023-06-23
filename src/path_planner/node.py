@@ -22,6 +22,8 @@ class Node:
         self.h = 0  # From current node to end node
         self.f = 0  # Total cost
     
+    # def __eq__(self, other) -> bool:
+    #     return self.calculate_distance(other) < 0.1
     def __eq__(self, other) -> bool:
         return self.calculate_distance(other) < 0.1
 

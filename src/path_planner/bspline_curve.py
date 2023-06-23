@@ -83,7 +83,7 @@ def calccccc(list):
     for i in range(0,len(rx)-1):
         
         path_curve.append(Node.__add__(cube(rx[i],ry[i]),cube(0,0)))
-    print(path_curve)
+    
     return path_curve
 
 

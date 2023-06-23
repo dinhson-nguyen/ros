@@ -51,3 +51,5 @@ class Map:
                     print('1', end='')
 
             print()
+    
+        
