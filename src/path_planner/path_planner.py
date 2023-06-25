@@ -7,6 +7,9 @@ from tf import TransformListener, ExtrapolationException, LookupException
 from tf2_msgs.msg import TFMessage
 from path_planner.bspline_curve import calccccc
 import math
+from visualization_msgs.msg import Marker, MarkerArray
+from geometry_msgs.msg import Vector3, Point
+
 
 class PathPlanner:
     def __init__(self):
@@ -26,8 +29,11 @@ class PathPlanner:
         self.transform_listener = TransformListener()
 
         self.path_publisher = rospy.Publisher("/path", Path, queue_size=10)
-        self.mover_publisher = rospy.Publisher("/move", Path, queue_size=1)
-      
+        self.path_publisher_1 = rospy.Publisher("/path1", Path, queue_size=10)
+        self.mover_publisher = rospy.Publisher("/move", Path, queue_size=10)
+        self.grid_cell = rospy.Publisher("/cell",Point,queue_size=10)
+        self.marker_array = MarkerArray()
+
     def map_callback(self, data: OccupancyGrid):
         self.map = path_planner.Map(data)
         self.is_map_loaded = True
@@ -60,35 +66,43 @@ class PathPlanner:
 
     def calculate_path(self):
         rospy.loginfo("Calculating path...")
-        path_list = path_planner.find_path(self.map, self.start, self.goal)
+        path_original = path_planner.find_path(self.map, self.start, self.goal)
+        for i in path_original:
+            print([i.x,i.y])
+        m = self.display_path_1(path_original)
+        
+        
         print('node original path')
-        print(len(path_list))
+        print(len(path_original))
         rebuild_path =[]
-        for i in path_list:
+        for i in path_original:
             rebuild_path.append(i)
-        z= (len(path_list)-1)
-        while z > 2 :
+        z= (len(rebuild_path)-1)
+        while z > 1 :
             
             a= [rebuild_path[z].x,rebuild_path[z-2].x]
             b= [rebuild_path[z].y,rebuild_path[z-2].y]
 
             if self.checkline(a,b)== True:
-                rebuild_path[z].parent = rebuild_path[z-2]
+                # rebuild_path[z].parent = rebuild_path[z-2]
                 rebuild_path.remove(rebuild_path[z-1])
                 z =z -1
                 
             else:
                 z=z-1
         
-            
+        m = self.display_path(rebuild_path)
         print('node rebuild path')
         print(len(rebuild_path))
         if len(rebuild_path) > 0:
             rospy.loginfo("Path calculated")
             path_list = calccccc(rebuild_path)
+            m = self.display_path
 
-            path_msg = self.display_path(path_list)
+            
+            path_msg =self.display_path_notshowpath(path_list)
             self.mover_publisher.publish(path_msg)
+            # path_show = self.display_test(path_list,rebuild_path)
             return True
 
         rospy.loginfo("No path found")
@@ -151,55 +165,45 @@ class PathPlanner:
         self.path_publisher.publish(path)
 
         return path
-    def display_path1(self, path_nodes: list) -> Path:
+    def display_path_1(self, path_nodes: list) -> Path:
         path = Path()
         path.header.frame_id = "map"
         path.header.stamp = rospy.Time.now()
 
         for node in path_nodes:
             path.poses.append(node.to_pose_stamped())
-
-        self.path_publisher.publish(path)
-
+        self.path_publisher_1.publish(path)
         return path
-    def check_line(self,x:list,y:list):
-        pass
+    def display_path_notshowpath(self, path_nodes: list) -> Path:
+        path = Path()
+        path.header.frame_id = "map"
+        path.header.stamp = rospy.Time.now()
 
-
-    def line(self,x:list,y:list):
-        return [y[0]-y[1],x[1]-x[0]]
+        for node in path_nodes:
+            path.poses.append(node.to_pose_stamped())
+        
+        return path
     
 
-    # def check_line(self,x:list,y:list):
-    #     a = x[0]
-    #     b = x[1]
-    #     c = y[0]
-    #     d = y[1]
-    #     line = self.line([a,b],[c,d])
-    #     if  line[1] != 0:
-    #         for i in range (int(a+1),int(b),1):
-    #             if path_planner.get_by_indices(int(i-a),int(line[0]*(i-a)/line[1]+c)) != 0:
-    #                 return False
-    #     elif line[0] != 0:
-    #         for i in range (int(c+1),int(d),1):
-    #             if path_planner.get_by_indices(int(line[1]*(i-c)/line[0]+a),int(i-c)) != 0:
-    #                 return False
-    #     else:
-    #         return False
-    #     return True
     def checkline(self,a:list,b:list):
-        c= a[0] - a[1]
+        a0,b0 = self.map.coordinates_to_indices(a[0],b[0])
+        a1,b1 = self.map.coordinates_to_indices(a[1],b[1])
+        c= a0 -a1
         c1 = abs(c)
-        d= b[0] - b[1]
+        d= b0 - b1
         d1 = abs(d)
+        if c == 0 or d == 0:
+            return False
         for t in range(1,int(c1)+1):
-            x = min(a)//1 + t
-            y = ((x-a[1])*d/c+b[1])//1
+            x = a0 + t
+            y = (x-a1)*d/c+b1
+            
             if self.map.get_by_indices(int(x),int(y)) != 0:
                 return False
+            
         for t in range(1,int(d1)+1):
-            y = min(b)//1 + t
-            x = ((y-b[1])*c/d+a[1])//1
+            y = b0 + t
+            x = (y-b1)*c/d+a1
             if self.map.get_by_indices(int(x),int(y)) != 0:
                 return False
         return True    

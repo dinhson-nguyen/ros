@@ -50,8 +50,8 @@ class Node:
     def generate_neighbors(self, map_resolution: float) -> list:
         neighbors = []
         step = (path_planner.pixel_tolerance + 1) * map_resolution
-        moves = [(0, -step), (0, step), (-step, 0), (step, 0),
-                 (-step, -step), (-step, step), (step, -step), (step, step)]
+        moves = [(0, -step), (0, step), (-step, 0), (step, 0)]
+                #  (-step, -step), (-step, step), (step, -step), (step, step)]
 
         for move in moves:
             neighbors.append(Node(x=self.x + move[0], y=self.y + move[1]))
