@@ -5,10 +5,9 @@ from geometry_msgs.msg import Pose, PoseStamped
 from nav_msgs.msg import OccupancyGrid, Path
 from tf import TransformListener, ExtrapolationException, LookupException
 from tf2_msgs.msg import TFMessage
-from path_planner.bspline_curve import calccccc
+from path_planner.bspline_curve import calccccc , mid_point
 import math
-from visualization_msgs.msg import Marker, MarkerArray
-from geometry_msgs.msg import Vector3, Point
+from geometry_msgs.msg import  Point
 
 
 class PathPlanner:
@@ -32,7 +31,6 @@ class PathPlanner:
         self.path_publisher_1 = rospy.Publisher("/path1", Path, queue_size=10)
         self.mover_publisher = rospy.Publisher("/move", Path, queue_size=10)
         self.grid_cell = rospy.Publisher("/cell",Point,queue_size=10)
-        self.marker_array = MarkerArray()
 
     def map_callback(self, data: OccupancyGrid):
         self.map = path_planner.Map(data)
@@ -67,8 +65,7 @@ class PathPlanner:
     def calculate_path(self):
         rospy.loginfo("Calculating path...")
         path_original = path_planner.find_path(self.map, self.start, self.goal)
-        for i in path_original:
-            print([i.x,i.y])
+        
         m = self.display_path_1(path_original)
         
         
@@ -90,13 +87,22 @@ class PathPlanner:
                 
             else:
                 z=z-1
+        z= (len(rebuild_path)-1)
+        add_midpoint = []
+        for i in range(0,z-1,1):
+            add_midpoint.append(rebuild_path[i])
+            add_midpoint.append(mid_point(rebuild_path[i],rebuild_path[i+1]))
+        add_midpoint.append(rebuild_path[-1])
+
+
+
         
         m = self.display_path(rebuild_path)
         print('node rebuild path')
         print(len(rebuild_path))
         if len(rebuild_path) > 0:
             rospy.loginfo("Path calculated")
-            path_list = calccccc(rebuild_path)
+            path_list = calccccc(add_midpoint)
             m = self.display_path
 
             
@@ -193,7 +199,7 @@ class PathPlanner:
         d= b0 - b1
         d1 = abs(d)
         if c == 0 or d == 0:
-            return False
+            return True
         for t in range(1,int(c1)+1):
             x = a0 + t
             y = (x-a1)*d/c+b1

@@ -85,7 +85,12 @@ def calccccc(list):
         path_curve.append(Node.__add__(cube(rx[i],ry[i]),cube(0,0)))
     
     return path_curve
-
+def mid_point(a,b):
+    class cube:
+        def __init__(self,x,y) -> None:
+            self.x = x
+            self.y =  y
+    return Node.__add__(cube((a.x+b.x)/2,(a.y+b.y)/2),cube(0,0))
 
 
     
