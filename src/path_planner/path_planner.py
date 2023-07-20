@@ -6,18 +6,18 @@ from nav_msgs.msg import OccupancyGrid, Path
 from tf import TransformListener, ExtrapolationException, LookupException
 from tf2_msgs.msg import TFMessage
 from path_planner.bspline_curve import calccccc , mid_point
-import math
 from geometry_msgs.msg import  Point
-
+import numpy as np
+from nav_msgs.msg import GridCells
+from std_msgs.msg import ColorRGBA
 
 class PathPlanner:
     def __init__(self):
         self.map = None
         self.start = None
         self.goal = None
-
+        self.node = path_planner.Node
         self.mover = path_planner.GotoMover(self)
-
         self.is_goal_cancelled = False
         self.is_goal_reached = False
         self.is_map_loaded = False
@@ -30,11 +30,13 @@ class PathPlanner:
         self.path_publisher = rospy.Publisher("/path", Path, queue_size=10)
         self.path_publisher_1 = rospy.Publisher("/path1", Path, queue_size=10)
         self.mover_publisher = rospy.Publisher("/move", Path, queue_size=10)
-        self.grid_cell = rospy.Publisher("/cell",Point,queue_size=10)
+        self.grid_cell_1 = rospy.Publisher("/cell1",GridCells,queue_size=10)
+        self.grid_cell_2 = rospy.Publisher("/cell2",GridCells,queue_size=10)
 
     def map_callback(self, data: OccupancyGrid):
         self.map = path_planner.Map(data)
         self.is_map_loaded = True
+
     
     def start_callback(self, data: TFMessage):
         try:
@@ -61,20 +63,30 @@ class PathPlanner:
             return False
 
         return self.calculate_path()
-
-    def calculate_path(self):
-        rospy.loginfo("Calculating path...")
-        path_original = path_planner.find_path(self.map, self.start, self.goal)
-        
-        m = self.display_path_1(path_original)
-        
-        
-        print('node original path')
-        print(len(path_original))
+    def rebuild(self,path_original):
         rebuild_path =[]
         for i in path_original:
             rebuild_path.append(i)
+        z= (len(rebuild_path)-2)
+        while z > 2 :
+            
+            a= [rebuild_path[z].x,rebuild_path[z-2].x]
+            b= [rebuild_path[z].y,rebuild_path[z-2].y]
+
+            if self.checkline(a,b)== True:
+                # rebuild_path[z].parent = rebuild_path[z-2]
+                rebuild_path.remove(rebuild_path[z-1])
+            z =z -1
+                
+            
         z= (len(rebuild_path)-1)
+        print('node count: ' + str(len(rebuild_path)))
+        return rebuild_path
+    def rebuild_1(self,path_original):
+        rebuild_path =[]
+        for i in path_original:
+            rebuild_path.append(i)
+        z= (len(rebuild_path)-2)
         while z > 1 :
             
             a= [rebuild_path[z].x,rebuild_path[z-2].x]
@@ -83,37 +95,42 @@ class PathPlanner:
             if self.checkline(a,b)== True:
                 # rebuild_path[z].parent = rebuild_path[z-2]
                 rebuild_path.remove(rebuild_path[z-1])
-                z =z -1
-                
-            else:
-                z=z-1
+            z =z -1
         z= (len(rebuild_path)-1)
         add_midpoint = []
         for i in range(0,z-1,1):
             add_midpoint.append(rebuild_path[i])
             add_midpoint.append(mid_point(rebuild_path[i],rebuild_path[i+1]))
         add_midpoint.append(rebuild_path[-1])
+        print('node count: ' + str(len(add_midpoint)))
+        return add_midpoint
 
-
-
+    def calculate_path(self):
+        rospy.loginfo("Calculating path...")
+        path_original = path_planner.find_path(self.map, self.start, self.goal)
         
+        m = self.display_path_1(path_original)
+        print('node original path')
+        print(len(path_original))
+        rebuild_path = self.rebuild(path_original)
+        # add_midpoint = self.rebuild_1(rebuild_path)
+
         m = self.display_path(rebuild_path)
         print('node rebuild path')
         print(len(rebuild_path))
         if len(rebuild_path) > 0:
             rospy.loginfo("Path calculated")
-            path_list = calccccc(add_midpoint)
+            path_list = calccccc(rebuild_path)
             m = self.display_path
-
-            
             path_msg =self.display_path_notshowpath(path_list)
             self.mover_publisher.publish(path_msg)
+            self.display_risk_1(path_original)
+            self.display_risk_2(path_original)
             # path_show = self.display_test(path_list,rebuild_path)
             return True
-
         rospy.loginfo("No path found")
         self.display_path([])
-
+        
         return False
 
     def wait_for_map(self):
@@ -191,28 +208,121 @@ class PathPlanner:
         return path
     
 
-    def checkline(self,a:list,b:list):
-        a0,b0 = self.map.coordinates_to_indices(a[0],b[0])
-        a1,b1 = self.map.coordinates_to_indices(a[1],b[1])
-        c= a0 -a1
-        c1 = abs(c)
-        d= b0 - b1
-        d1 = abs(d)
-        if c == 0 or d == 0:
-            return True
-        for t in range(1,int(c1)+1):
-            x = a0 + t
-            y = (x-a1)*d/c+b1
+    # def checkline(self,a:list,b:list):
+    #     print(a,b)
+    #     a0,b0 = self.map.coordinates_to_indices(a[0],b[0])
+    #     a1,b1 = self.map.coordinates_to_indices(a[1],b[1])
+    #     c= a0 -a1
+    #     c1 = abs(c)
+    #     d= b0 - b1
+    #     d1 = abs(d)
+    #     if c == 0 or d == 0:
+    #         return True
+    #     for t in range(1,int(c1)+1):
+    #         x = a0 + t
+    #         y = (x-a1)*d/c+b1
             
-            if self.map.get_by_indices(int(x),int(y)) != 0:
-                return False
+    #         if self.map.get_by_indices(int(x),int(y)) != 0:
+    #             return False
             
-        for t in range(1,int(d1)+1):
-            y = b0 + t
-            x = (y-b1)*c/d+a1
-            if self.map.get_by_indices(int(x),int(y)) != 0:
-                return False
-        return True    
+    #     for t in range(1,int(d1)+1):
+    #         y = b0 + t
+    #         x = (y-b1)*c/d+a1
+    #         if self.map.get_by_indices(int(x),int(y)) != 0:
+    #             return False
+    #     return True    
 
+    def checkline(self,a:list,b:list):
+        class cube:
+            def __init__(self,x,y) -> None:
+                self.x =  x
+                self.y =  y
+        c= a[0] -a[1]
+        c1 = max(a) -min(a)
+        d= b[0] - b[1]
+        d1 = max(b) - min(b)
+        if c == 0 and d != 0:
+            for t in np.arange(0.0,float(d1),0.001):
+                x= a[0]
+                y= min(b) +t
+                if self.map.is_node_free(self.node.__add__(cube(x,y),cube(0,0))) is False:
+                    return False
+        elif d == 0 and c !=0:
+            for t in np.arange(0.0,float(c1),0.001):
+                x = min(a) + t
+                y = b[0]
+                if self.map.is_node_free(self.node.__add__(cube(x,y),cube(0,0))) is False:
+                    return False
+
+        elif d ==0 and c ==0:
+            return True
+        else :
+            for t in np.arange(0.0,float(c1),0.001):
+                x = min(a) + t
+                y = (x-a[1])*d/c+b[1]
+                
+            
+                if self.map.is_node_free(self.node.__add__(cube(x,y),cube(0,0))) is False:
+                    return False
+            
+            for t in np.arange(0.0,float(d1),0.001):
+            
+                y = min(b) + t
+                x = (y-b[1])*c/d+a[1]
+                if self.map.is_node_free(self.node.__add__(cube(x,y),cube(0,0))) is False:
+                    return False
         
+        return True
+    def display_risk_1(self,path):
+        print('launch_display')
+        grid_cells_msg = GridCells()
+        grid_cells_msg.header.frame_id = "map"
+        grid_cells_msg.header.stamp = rospy.Time.now()
+        grid_cells_msg.cell_width = 0.05  # in meters
+        grid_cells_msg.cell_height = 0.05  # in meters
+        # grid_cells_msg.cells = []
+        # color = ColorRGBA(115.0, 114.0, 114.0, 0.5)
+        class cube:
+            def __init__(self,x,y) -> None:
+                self.x =  x
+                self.y =  y
+        list_x = [node.x for node in path]
+        list_y = [node.y for node in path]
+        for t in np.arange(min(list_x),max(list_x),0.05):
+            for k in np.arange(min(list_y),max(list_y),0.05):
+                cell = Point()
+                if self.map.is_node_risk_1(self.node.__add__(cube(t,k),cube(0,0))) is True:
+                    cell.x = t
+                    cell.y =k
+                    cell.z = 0
+                    grid_cells_msg.cells.append(cell)
+                    
+        self.grid_cell_1.publish(grid_cells_msg)
+    def display_risk_2(self,path):
+        print('launch_display')
+        grid_cells_msg = GridCells()
+        grid_cells_msg.header.frame_id = "map"
+        grid_cells_msg.header.stamp = rospy.Time.now()
+        grid_cells_msg.cell_width = 0.05  # in meters
+        grid_cells_msg.cell_height = 0.05  # in meters
+        # grid_cells_msg.cells = []
+        # color = ColorRGBA(115.0, 114.0, 114.0, 0.5)
+        class cube:
+            def __init__(self,x,y) -> None:
+                self.x =  x
+                self.y =  y
+        list_x = [node.x for node in path]
+        list_y = [node.y for node in path]
+        for t in np.arange(min(list_x),max(list_x),0.05):
+            for k in np.arange(min(list_y),max(list_y),0.05):
+                cell = Point()
+                if self.map.is_node_risk_2(self.node.__add__(cube(t,k),cube(0,0))) is True:
+                    cell.x = t
+                    cell.y =k
+                    cell.z = 0
+                    grid_cells_msg.cells.append(cell)
+                    
+        self.grid_cell_2.publish(grid_cells_msg)
+
+
 
