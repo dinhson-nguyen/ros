@@ -260,18 +260,14 @@ class PathPlanner:
             for t in np.arange(0.0,float(c1),0.001):
                 x = min(a) + t
                 y = (x-a[1])*d/c+b[1]
-                
-            
                 if self.map.is_node_free(self.node.__add__(cube(x,y),cube(0,0))) is False:
                     return False
             
             for t in np.arange(0.0,float(d1),0.001):
-            
                 y = min(b) + t
                 x = (y-b[1])*c/d+a[1]
                 if self.map.is_node_free(self.node.__add__(cube(x,y),cube(0,0))) is False:
                     return False
-        
         return True
     def display_risk_1(self,path):
         print('launch_display')
@@ -280,8 +276,6 @@ class PathPlanner:
         grid_cells_msg.header.stamp = rospy.Time.now()
         grid_cells_msg.cell_width = 0.05  # in meters
         grid_cells_msg.cell_height = 0.05  # in meters
-        # grid_cells_msg.cells = []
-        # color = ColorRGBA(115.0, 114.0, 114.0, 0.5)
         class cube:
             def __init__(self,x,y) -> None:
                 self.x =  x
@@ -296,7 +290,6 @@ class PathPlanner:
                     cell.y =k
                     cell.z = 0
                     grid_cells_msg.cells.append(cell)
-                    
         self.grid_cell_1.publish(grid_cells_msg)
     def display_risk_2(self,path):
         print('launch_display')
@@ -305,8 +298,6 @@ class PathPlanner:
         grid_cells_msg.header.stamp = rospy.Time.now()
         grid_cells_msg.cell_width = 0.05  # in meters
         grid_cells_msg.cell_height = 0.05  # in meters
-        # grid_cells_msg.cells = []
-        # color = ColorRGBA(115.0, 114.0, 114.0, 0.5)
         class cube:
             def __init__(self,x,y) -> None:
                 self.x =  x

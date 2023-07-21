@@ -21,7 +21,6 @@ class Map:
     def coordinates_to_indices(self, x: float, y: float) -> tuple:
         i = int((y - self.origin.y) / self.resolution)
         j = int((x - self.origin.x) / self.resolution)
-        
         return i, j
 
     def is_node_free(self, node: path_planner.Node) -> bool:
