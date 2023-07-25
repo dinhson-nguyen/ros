@@ -8,7 +8,7 @@
 	<arg name="z_pos" default="0"/> -->
 
 	<include file="$(find gazebo_ros)/launch/empty_world.launch">
-		<arg name="world_name" value="/home/saurom/catkin_ws/src/ROS-AStar/world/draw.xml"/>
+		<arg name="world_name" value="/home/saurom/catkin_ws/src/ROS-AStar/world/HouseMap.xml"/>
 		<arg name="paused" value="false"/>
 		<arg name="use_sim_time" value="true"/>
 		<arg name="gui" value="true"/>
@@ -19,7 +19,7 @@
   	<param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_waffle.urdf.xacro" />
 
   	<node name="spawn" pkg="gazebo_ros" type="spawn_model" args="-urdf -model turtlebot3_$(arg model) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
-	<node name="map_server" pkg="map_server" type="map_server" args="/home/saurom/catkin_ws/src/ROS-AStar/map/draw_1.yaml" />
+	<node name="map_server" pkg="map_server" type="map_server" args="/home/saurom/catkin_ws/src/ROS-AStar/map/map.yaml" />
 	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find goto_mover)/rviz/goto_mover.rviz" />
 
 	<include file="$(find turtlebot3_bringup)/launch/turtlebot3_remote.launch">
